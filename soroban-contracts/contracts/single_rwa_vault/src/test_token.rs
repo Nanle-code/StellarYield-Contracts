@@ -28,6 +28,7 @@ fn default_params(env: &Env, admin: &Address, asset: &Address) -> InitParams {
         maturity_date: 9_999_999_999_u64,
         min_deposit: 1_000_i128,
         max_deposit_per_user: 0_i128,
+        max_investors: 100_u32,
         early_redemption_fee_bps: 100_u32,
         funding_deadline: 0_u64,
         rwa_name: String::from_str(env, "Test RWA"),
@@ -35,6 +36,7 @@ fn default_params(env: &Env, admin: &Address, asset: &Address) -> InitParams {
         rwa_document_uri: String::from_str(env, "https://test.com"),
         rwa_category: String::from_str(env, "Real Estate"),
         expected_apy: 500_u32,
+        lock_up_period: 0u64,
     }
 }
 

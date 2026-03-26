@@ -60,4 +60,6 @@ pub enum Error {
     SharesLocked = 34,
     /// Vault has insufficient balance to cover the requested transfer
     InsufficientVaultBalance = 35,
+    /// Maximum number of investors has been reached
+    MaxInvestorsReached = 36,
 }

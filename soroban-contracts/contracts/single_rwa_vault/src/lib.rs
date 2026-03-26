@@ -25,6 +25,8 @@ mod test_funding_deadline;
 #[cfg(test)]
 mod test_insufficient_balance;
 #[cfg(test)]
+mod test_investor_count;
+#[cfg(test)]
 mod test_lifecycle;
 #[cfg(test)]
 mod test_verification;
@@ -116,6 +118,7 @@ impl SingleRWAVault {
         put_funding_deadline(e, params.funding_deadline);
         put_min_deposit(e, params.min_deposit);
         put_max_deposit_per_user(e, params.max_deposit_per_user);
+        put_max_investors(e, params.max_investors);
         put_early_redemption_fee_bps(e, params.early_redemption_fee_bps);
         put_lock_up_period(e, params.lock_up_period);
 
@@ -130,6 +133,7 @@ impl SingleRWAVault {
         put_total_supply(e, 0i128);
         put_transfer_requires_kyc(e, true);
         put_total_deposited(e, 0i128);
+        put_investor_count(e, 0u32);
 
         // Versioning
         put_contract_version(e, 1u32);
@@ -306,12 +310,31 @@ impl SingleRWAVault {
         // Shares = assets (1:1 at start; yield accrual changes the price)
         let shares = preview_deposit(e, assets);
 
+        // --- Investor count tracking ---
+        let user_balance = get_share_balance(e, &receiver);
+        let is_new_investor = user_balance == 0;
+        if is_new_investor {
+            let max_investors = get_max_investors(e);
+            if max_investors > 0 {
+                let current_count = get_investor_count(e);
+                if current_count >= max_investors {
+                    panic_with_error!(e, Error::MaxInvestorsReached);
+                }
+            }
+        }
+
         // --- Effects (state changes first) ---
         update_user_snapshot(e, &receiver);
         put_user_deposited(e, &receiver, get_user_deposited(e, &receiver) + assets);
         put_total_deposited(e, get_total_deposited(e) + assets);
         // Store deposit timestamp for lock-up enforcement
         put_deposit_timestamp(e, &receiver, e.ledger().timestamp());
+        
+        // Increment investor count for new investors
+        if is_new_investor {
+            put_investor_count(e, get_investor_count(e) + 1);
+        }
+        
         _mint(e, &receiver, shares);
 
         // --- Interaction (external call last) ---
@@ -355,12 +378,31 @@ impl SingleRWAVault {
             }
         }
 
+        // --- Investor count tracking ---
+        let user_balance = get_share_balance(e, &receiver);
+        let is_new_investor = user_balance == 0;
+        if is_new_investor {
+            let max_investors = get_max_investors(e);
+            if max_investors > 0 {
+                let current_count = get_investor_count(e);
+                if current_count >= max_investors {
+                    panic_with_error!(e, Error::MaxInvestorsReached);
+                }
+            }
+        }
+
         // --- Effects (state changes first) ---
         update_user_snapshot(e, &receiver);
         put_user_deposited(e, &receiver, get_user_deposited(e, &receiver) + assets);
         put_total_deposited(e, get_total_deposited(e) + assets);
         // Store deposit timestamp for lock-up enforcement
         put_deposit_timestamp(e, &receiver, e.ledger().timestamp());
+        
+        // Increment investor count for new investors
+        if is_new_investor {
+            put_investor_count(e, get_investor_count(e) + 1);
+        }
+        
         _mint(e, &receiver, shares);
 
         // --- Interaction (external call last) ---
@@ -422,8 +464,18 @@ impl SingleRWAVault {
 
         // --- Effects ---
         update_user_snapshot(e, &owner);
+        let user_balance_before = get_share_balance(e, &owner);
         _burn(e, &owner, shares);
         put_total_deposited(e, get_total_deposited(e) - assets);
+        
+        // Decrement investor count if user fully exited (balance becomes 0)
+        let user_balance_after = get_share_balance(e, &owner);
+        if user_balance_before > 0 && user_balance_after == 0 {
+            let current_count = get_investor_count(e);
+            if current_count > 0 {
+                put_investor_count(e, current_count - 1);
+            }
+        }
 
         // --- Interaction ---
         transfer_asset_from_vault(e, &receiver, assets);
@@ -478,8 +530,18 @@ impl SingleRWAVault {
         // --- Effects ---
         update_user_snapshot(e, &owner);
         let assets = preview_redeem(e, shares);
+        let user_balance_before = get_share_balance(e, &owner);
         _burn(e, &owner, shares);
         put_total_deposited(e, get_total_deposited(e) - assets);
+        
+        // Decrement investor count if user fully exited (balance becomes 0)
+        let user_balance_after = get_share_balance(e, &owner);
+        if user_balance_before > 0 && user_balance_after == 0 {
+            let current_count = get_investor_count(e);
+            if current_count > 0 {
+                put_investor_count(e, current_count - 1);
+            }
+        }
 
         // --- Interaction ---
         transfer_asset_from_vault(e, &receiver, assets);
@@ -1067,6 +1129,21 @@ impl SingleRWAVault {
     }
     pub fn user_deposited(e: &Env, user: Address) -> i128 {
         get_user_deposited(e, &user)
+    }
+
+    pub fn investor_count(e: &Env) -> u32 {
+        get_investor_count(e)
+    }
+
+    pub fn max_investors(e: &Env) -> u32 {
+        get_max_investors(e)
+    }
+
+    pub fn set_max_investors(e: &Env, caller: Address, max: u32) {
+        caller.require_auth();
+        require_admin(e, &caller);
+        put_max_investors(e, max);
+        bump_instance(e);
     }
 
     pub fn set_deposit_limits(e: &Env, caller: Address, min_amount: i128, max_amount: i128) {

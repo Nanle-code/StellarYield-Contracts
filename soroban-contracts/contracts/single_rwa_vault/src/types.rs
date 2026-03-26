@@ -26,6 +26,7 @@ pub struct InitParams {
     pub maturity_date: u64,
     pub min_deposit: i128,
     pub max_deposit_per_user: i128,
+    pub max_investors: u32,
     pub early_redemption_fee_bps: u32,
     /// Unix timestamp after which funding can be cancelled if target not met.
     pub funding_deadline: u64,

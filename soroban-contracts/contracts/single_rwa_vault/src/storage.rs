@@ -64,6 +64,7 @@ pub enum DataKey {
     MaturityDate,
     MinDeposit,
     MaxDepositPerUser,
+    MaxInvestors,
     EarlyRedemptionFeeBps,
     LockUpPeriod,
 
@@ -109,6 +110,9 @@ pub enum DataKey {
 
     // --- Total deposited principal ---
     TotalDeposited,
+
+    // --- Investor tracking ---
+    InvestorCount,
 
     // --- Early redemption ---
     RedemptionCounter,
@@ -263,6 +267,8 @@ instance_get!(get_min_deposit, MinDeposit, i128);
 instance_put!(put_min_deposit, MinDeposit, i128);
 instance_get!(get_max_deposit_per_user, MaxDepositPerUser, i128);
 instance_put!(put_max_deposit_per_user, MaxDepositPerUser, i128);
+instance_get!(get_max_investors, MaxInvestors, u32);
+instance_put!(put_max_investors, MaxInvestors, u32);
 instance_get!(get_early_redemption_fee_bps, EarlyRedemptionFeeBps, u32);
 instance_put!(put_early_redemption_fee_bps, EarlyRedemptionFeeBps, u32);
 
@@ -311,6 +317,10 @@ instance_put!(put_total_supply, TotalSupply, i128);
 // TotalDeposited (principal tracking)
 instance_get!(get_total_deposited, TotalDeposited, i128);
 instance_put!(put_total_deposited, TotalDeposited, i128);
+
+// InvestorCount (unique investor tracking)
+instance_get!(get_investor_count, InvestorCount, u32);
+instance_put!(put_investor_count, InvestorCount, u32);
 
 // RedemptionCounter
 instance_get!(get_redemption_counter, RedemptionCounter, u32);
