@@ -6,7 +6,7 @@ use soroban_sdk::{
     Address, Env, String,
 };
 
-use crate::{InitParams, SingleRWAVault, SingleRWAVaultClient};
+use crate::{InitParams, Role, SingleRWAVault, SingleRWAVaultClient};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock SEP-41 token
@@ -90,6 +90,7 @@ fn make_vault(env: &Env) -> (Address, Address, Address, Address) {
             rwa_document_uri: String::from_str(env, "https://example.com"),
             rwa_category: String::from_str(env, "Bond"),
             expected_apy: 500u32,
+            timelock_delay: 172800u64, // 48 hours
         },),
     );
 
@@ -513,4 +514,33 @@ fn test_redeem_at_maturity_zero_shares_panics() {
     let vault = SingleRWAVaultClient::new(&env, &vault_id);
     // Must panic — zero shares
     vault.redeem_at_maturity(&user, &0i128, &user, &user);
+}
+
+/// Blacklisted address cannot redeem shares.
+#[test]
+#[should_panic(expected = "Error(Contract, #14)")] // Error::AddressBlacklisted = 14
+fn test_redeem_blacklisted_address_panics() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let (vault_id, token_id, zkme_id, admin) = make_vault(&env);
+    let user = Address::generate(&env);
+
+    let deposit_amount = 1_000_000i128;
+    let shares = fund_user(&env, &vault_id, &token_id, &zkme_id, &user, deposit_amount);
+
+    // Activate the vault so early redemption is available
+    activate(&env, &vault_id, &admin);
+
+    let vault = SingleRWAVaultClient::new(&env, &vault_id);
+
+    // Grant ComplianceOfficer role to admin so they can blacklist
+    vault.grant_role(&admin, &admin, &Role::ComplianceOfficer);
+
+    // Blacklist the user
+    vault.set_blacklisted(&admin, &user, &true);
+    assert!(vault.is_blacklisted(&user));
+
+    // Try to redeem — should panic with AddressBlacklisted
+    vault.redeem(&user, &shares, &user, &user);
 }

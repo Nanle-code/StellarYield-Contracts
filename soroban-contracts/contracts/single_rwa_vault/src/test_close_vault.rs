@@ -84,7 +84,7 @@ fn test_close_vault_fails_for_non_operator() {
 
 #[test]
 #[should_panic(expected = "Error(Contract, #5)")] // InvalidVaultState
-fn test_closed_state_blocks_yield_claim() {
+fn test_claim_yield_after_vault_closure_is_rejected() {
     let ctx = setup();
     let v = ctx.vault();
 
