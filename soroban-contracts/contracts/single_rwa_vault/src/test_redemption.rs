@@ -917,8 +917,6 @@ fn test_claim_yield_for_epoch_twice_panics() {
     vault.claim_yield_for_epoch(&user, &1u32);
 }
 
-
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Regression test: Multiple users claiming yield for the same epoch
 // ─────────────────────────────────────────────────────────────────────────────
